@@ -794,17 +794,17 @@ final class WidgetSnapshotSkewTests: XCTestCase {
             HeadroomWidgetSnapshot.self, from: Data(json.utf8))
     }
 
-    func testWidgetKindsStayDistinctAndStable() {
-        // WidgetKit cannot migrate an already-placed StaticConfiguration to
-        // AppIntentConfiguration. Reusing this identity strands the old tile
-        // on its last snapshot; the configurable widget must be a new kind.
+    func testPlacedWidgetKindsStayDistinctAndStable() {
+        // WidgetKit persists both the kind and configuration system for a
+        // placed tile. Both definitions must keep their kinds after shipping,
+        // and the two configuration systems need distinct identities.
         XCTAssertEqual(HeadroomWidgetIdentity.legacyKind, "HeadroomWidget")
         XCTAssertEqual(
-            HeadroomWidgetIdentity.configurableKind,
+            HeadroomWidgetIdentity.editableKind,
             "HeadroomWidget.Configurable"
         )
         XCTAssertNotEqual(
-            HeadroomWidgetIdentity.configurableKind,
+            HeadroomWidgetIdentity.editableKind,
             HeadroomWidgetIdentity.legacyKind
         )
     }
@@ -949,7 +949,7 @@ final class WidgetSnapshotSkewTests: XCTestCase {
         ]}
         """)
         XCTAssertEqual(snapshot.showing("codex").providers.map(\.id), ["codex"])
-        // The default, and every widget placed before the picker existed.
+        // The editable widget's explicit all-provider choice.
         XCTAssertEqual(
             snapshot.showing(nil).providers.map(\.id), ["claude", "codex"])
     }
