@@ -181,15 +181,28 @@ final class ContractTests: XCTestCase {
 
         let columns = QuotaOverviewSummary.columns(
             for: snapshot,
-            timeZone: try XCTUnwrap(TimeZone(secondsFromGMT: 0))
+            timeZone: try XCTUnwrap(TimeZone(secondsFromGMT: 0)),
+            now: Date(timeIntervalSince1970: 1787500800)
         )
         XCTAssertEqual(columns.map(\.providerID), ["claude", "codex"])
         XCTAssertEqual(
             columns.map { [$0.resetLine ?? "", $0.paceLine] },
             [
-                ["Reset: 5d1h, Sun 1pm.", "11% to spare"],
-                ["Reset: 5d10h, Mon 2am.", "7% to spare"],
+                ["5d1h", "11% to spare"],
+                ["5d10h", "7% to spare"],
             ]
+        )
+    }
+
+    func testQuotaOverviewResetUsesOnlyClockWhenResetIsToday() {
+        XCTAssertEqual(
+            HeadroomCopy.quotaOverviewReset(
+                duration: "5h 2m",
+                resetEpoch: 1788094800,
+                timeZone: TimeZone(secondsFromGMT: 0)!,
+                now: Date(timeIntervalSince1970: 1788091200)
+            ),
+            "1pm"
         )
     }
 
@@ -1036,7 +1049,7 @@ final class WidgetSnapshotSkewTests: XCTestCase {
         )
         XCTAssertEqual(
             current.providers.first?.macWidgetMediumSummaryLabel,
-            "Claude: 89% left, 33% spare"
+            "Claude: 33% spare"
         )
 
         let older = try decode("""
@@ -1046,7 +1059,7 @@ final class WidgetSnapshotSkewTests: XCTestCase {
         """)
         XCTAssertEqual(
             older.providers.first?.macWidgetMediumSummaryLabel,
-            "Claude: 89% left, — spare"
+            "Claude: — spare"
         )
 
         let over = try decode("""
@@ -1057,7 +1070,7 @@ final class WidgetSnapshotSkewTests: XCTestCase {
         """)
         XCTAssertEqual(
             over.providers.first?.macWidgetMediumSummaryLabel,
-            "Codex: 86% left, 4% over"
+            "Codex: 4% over"
         )
     }
 
@@ -1272,7 +1285,7 @@ final class WidgetSnapshotSkewTests: XCTestCase {
         XCTAssertEqual(provider.widgetPaceSlackLabel, "10% to spare")
         XCTAssertEqual(
             provider.macWidgetMediumSummaryLabel,
-            "Claude: 80% left, 10% spare"
+            "Claude: 10% spare"
         )
     }
 
