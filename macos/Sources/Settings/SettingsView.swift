@@ -38,6 +38,10 @@ struct SettingsView: View {
     @State var dropTargetID: String?
     /// Live usage by account id — feeds the Active card's bars.
     @State var usageProviders: [String: QuotaProviderInfo] = [:]
+    /// Last document read here, for General's menu-bar preview strip. Settings
+    /// is its own scene and holds no `UsageStore`, so the preview draws off
+    /// the snapshot `reloadSources()` already fetched.
+    @State var menuBarPreviewSnapshot: UsageSnapshot?
     /// Activity panel pin order from the host (legacy).
     @State var servicesOrder: [String] = IntegrationWatch.activityBlocks(from: nil)
         .map(\.rawValue)
@@ -172,6 +176,14 @@ struct SettingsView: View {
     @State var hostHasLaunchAgent = HostController.hasLaunchAgent
     @State var hostRemoveConfirming = false
     @State var usbFallbackEnabled = HeadroomUSB.isEnabled
+    /// Settings → Desk display. Loaded by the pane's own `.task`, like the
+    /// time zone, so opening Settings for something else does not pay for it.
+    @State var deskDisplay = DeskDisplayConfiguration()
+    @State var deskDisplayMessage: String?
+    /// False when the host predates /config/display, so the controls do not
+    /// take edits that can never be saved.
+    @State var deskDisplayEditable = true
+    @State var savingDeskDisplay = false
     @State var usbTransportBusy = false
     @State var usbTransportMessage: String?
     @State var selection: SettingsDestination? = .general
@@ -298,6 +310,8 @@ struct SettingsView: View {
             generalPane
         case .otherMacs:
             otherMacsPane
+        case .deskDisplay:
+            deskDisplayPane
         case .sources:
             sourcesPane
         case .codingAgents:

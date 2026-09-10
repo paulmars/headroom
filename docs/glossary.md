@@ -172,6 +172,7 @@ surface-specific (see the end of this file), but the shape does not.
 | **Reply to the agent…** | Free-text answer to a request | iOS |
 | **Answer in the terminal** | This question is showing in both places; answer it where it was asked | iOS |
 | **Other Macs** | iCloud settings sync between Macs (under Sync) | macOS Settings |
+| **Desk display** | The ESP32 board's panel: **Brightness** (25/50/75/100%), **Dim on a schedule** (**From** / **Until** hours, host fades over 30 minutes), **Celebrate quota resets**, **Boot animation**, and which **Pages** BOOT cycles (one to one with sources; **Off under Integrations** when the source is off). Shows the board's **Firmware**, **Connection** and **Last seen** with a liveness dot judged against its measured poll cadence. Host-owned; the board applies it on its next poll. See [esp32.md](esp32.md) | macOS Settings |
 | **Telemetry** | Local payload preview plus thresholded Community Pulse (weekly growth, new vs returning, builds, CPU, macOS, countries, services, models, features), shown only while anonymous diagnostics is enabled. The newest week is marked as still filling and never differenced against a finished one | macOS Settings |
 | **Computers** | Macs paired to this iPhone; each token stays in the iPhone Keychain | iOS Settings |
 | **Add computer** | Pair another Mac without replacing the saved pairing | iOS Settings |
@@ -483,6 +484,12 @@ toggle that flips whichever style is active.
 
 Do not name the Pace option after the game metaphor in chrome — **Pace** is
 the glossary word; the midline-and-dot shape is just how it draws.
+
+A **Preview** strip sits above the picker, drawn by the same renderer the
+status item uses at the same 18pt, so the two styles can be compared without
+looking up at the menu bar. It draws the live top 3. When no coding provider
+is on it falls back to sample numbers and says so — the glyph is real, the
+numbers in it are not.
 
 The ESP32 glance takes the same two words for its upper half, with **Rings**
 in place of Remaining — the board's default paints used, not left, so calling
