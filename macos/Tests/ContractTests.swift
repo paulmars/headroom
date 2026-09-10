@@ -934,6 +934,19 @@ final class WidgetSnapshotSkewTests: XCTestCase {
             HeadroomWidgetIdentity.legacyKind,
             HeadroomWidgetIdentity.editableKind
         )
+        XCTAssertNotEqual(
+            HeadroomWidgetIdentity.burnLeftKind,
+            HeadroomWidgetIdentity.smallResetKind
+        )
+        XCTAssertEqual(
+            Set([
+                HeadroomWidgetIdentity.legacyKind,
+                HeadroomWidgetIdentity.editableKind,
+                HeadroomWidgetIdentity.burnLeftKind,
+                HeadroomWidgetIdentity.smallResetKind
+            ]).count,
+            4
+        )
     }
 
     func testWidgetBundleKeepsBothConfigurationSystems() throws {
@@ -966,6 +979,11 @@ final class WidgetSnapshotSkewTests: XCTestCase {
         )
         XCTAssertTrue(bundle.contains("HeadroomLegacyStatusWidget()"))
         XCTAssertTrue(bundle.contains("HeadroomStatusWidget()"))
+        XCTAssertTrue(bundle.contains("HeadroomBurnLeftWidget()"))
+        XCTAssertTrue(bundle.contains("HeadroomSmallResetWidget()"))
+
+        XCTAssertTrue(source.contains(".configurationDisplayName(\"Burn Left\")"))
+        XCTAssertTrue(source.contains(".configurationDisplayName(\"Small Reset\")"))
 
         let legacy = compact(try section(
             from: "struct HeadroomLegacyStatusWidget",

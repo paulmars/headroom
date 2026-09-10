@@ -495,6 +495,8 @@ struct HeadroomWidgetBundle: WidgetBundle {
     var body: some Widget {
         HeadroomLegacyStatusWidget()
         HeadroomStatusWidget()
+        HeadroomBurnLeftWidget()
+        HeadroomSmallResetWidget()
     }
 }
 
@@ -540,5 +542,39 @@ struct HeadroomStatusWidget: Widget {
         .configurationDisplayName("Headroom — Provider")
         .description(HeadroomWidgetGallery.subtitle)
         .supportedFamilies([.systemSmall, .systemMedium])
+    }
+}
+
+/// Paul's large reset/burn-down presentation, kept as a separate placement
+/// so it can coexist with the original Headroom widget.
+struct HeadroomBurnLeftWidget: Widget {
+    var body: some WidgetConfiguration {
+        AppIntentConfiguration(
+            kind: HeadroomWidgetIdentity.burnLeftKind,
+            intent: HeadroomWidgetConfiguration.self,
+            provider: HeadroomWidgetProvider()
+        ) { entry in
+            HeadroomWidgetView(entry: entry)
+        }
+        .configurationDisplayName("Burn Left")
+        .description(HeadroomWidgetGallery.subtitle)
+        .supportedFamilies([.systemMedium])
+    }
+}
+
+/// Paul's compact weekly/session reset presentation, kept as a separate
+/// placement so it can coexist with the original Headroom widget.
+struct HeadroomSmallResetWidget: Widget {
+    var body: some WidgetConfiguration {
+        AppIntentConfiguration(
+            kind: HeadroomWidgetIdentity.smallResetKind,
+            intent: HeadroomWidgetConfiguration.self,
+            provider: HeadroomWidgetProvider()
+        ) { entry in
+            HeadroomWidgetView(entry: entry)
+        }
+        .configurationDisplayName("Small Reset")
+        .description(HeadroomWidgetGallery.subtitle)
+        .supportedFamilies([.systemSmall])
     }
 }
