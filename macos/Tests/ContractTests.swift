@@ -984,6 +984,18 @@ final class WidgetSnapshotSkewTests: XCTestCase {
 
         XCTAssertTrue(source.contains(".configurationDisplayName(\"Burn Left\")"))
         XCTAssertTrue(source.contains(".configurationDisplayName(\"Small Reset\")"))
+        let burnLeft = compact(try section(
+            from: "struct HeadroomBurnLeftWidget", to: "struct HeadroomSmallResetWidget"))
+        XCTAssertTrue(burnLeft.contains(
+            "StaticConfiguration(kind:HeadroomWidgetIdentity.burnLeftKind,"
+                + "provider:HeadroomLegacyWidgetProvider()"
+        ))
+        let smallReset = compact(try section(
+            from: "struct HeadroomSmallResetWidget", to: nil))
+        XCTAssertTrue(smallReset.contains(
+            "StaticConfiguration(kind:HeadroomWidgetIdentity.smallResetKind,"
+                + "provider:HeadroomLegacyWidgetProvider()"
+        ))
 
         let legacy = compact(try section(
             from: "struct HeadroomLegacyStatusWidget",

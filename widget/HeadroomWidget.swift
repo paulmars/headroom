@@ -549,10 +549,9 @@ struct HeadroomStatusWidget: Widget {
 /// so it can coexist with the original Headroom widget.
 struct HeadroomBurnLeftWidget: Widget {
     var body: some WidgetConfiguration {
-        AppIntentConfiguration(
+        StaticConfiguration(
             kind: HeadroomWidgetIdentity.burnLeftKind,
-            intent: HeadroomWidgetConfiguration.self,
-            provider: HeadroomWidgetProvider()
+            provider: HeadroomLegacyWidgetProvider()
         ) { entry in
             HeadroomWidgetView(entry: entry)
         }
@@ -566,10 +565,9 @@ struct HeadroomBurnLeftWidget: Widget {
 /// placement so it can coexist with the original Headroom widget.
 struct HeadroomSmallResetWidget: Widget {
     var body: some WidgetConfiguration {
-        AppIntentConfiguration(
+        StaticConfiguration(
             kind: HeadroomWidgetIdentity.smallResetKind,
-            intent: HeadroomWidgetConfiguration.self,
-            provider: HeadroomWidgetProvider()
+            provider: HeadroomLegacyWidgetProvider()
         ) { entry in
             HeadroomWidgetView(entry: entry)
         }
