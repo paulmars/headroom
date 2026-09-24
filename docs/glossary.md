@@ -481,6 +481,7 @@ toggle that flips whichever style is active.
 | **Remaining** | Fuel | Fill height = quota left (today’s tanks) |
 | **Pace** | Pace | Dot above/below even-spend midline; `tanh((used − pace) / 8)` so small gaps move more than big ones |
 | **Invert** | — | Remaining fills by used instead of left; Pace flips over/under |
+| **Attention dot** | — | On (default): coloured pip when Attention warns. Off: the icon stays a monochrome template; the tooltip still says what needs attention |
 
 Do not name the Pace option after the game metaphor in chrome — **Pace** is
 the glossary word; the midline-and-dot shape is just how it draws.

@@ -238,8 +238,9 @@ enum HeadroomCopy {
     static let menuBarIconPreview = "Preview"
     static let menuBarIconPreviewSample =
         "Sample numbers. Turn on a coding provider and this shows your own."
+    static let menuBarIconAttentionPip = "Attention dot"
     static let menuBarIconHint =
-        "①②③ follow Providers order. Remaining fills each slot by what’s left. Pace places a mark above or below even spend — small gaps move more than big ones. Invert flips either reading (used instead of left, under instead of over)."
+        "①②③ follow Providers order. Remaining fills each slot by what’s left. Pace places a mark above or below even spend — small gaps move more than big ones. Invert flips either reading (used instead of left, under instead of over). Turn off Attention dot to keep the icon monochrome."
 
     /// Welcome rail / first-run heading for the Sources step.
     static let welcomeWhatToWatch = "What to watch"

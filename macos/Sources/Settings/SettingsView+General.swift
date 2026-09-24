@@ -17,6 +17,10 @@ extension SettingsView {
                 }
                 .pickerStyle(.segmented)
                 Toggle(HeadroomCopy.menuBarIconInvert, isOn: $menuBarIconInvert)
+                Toggle(HeadroomCopy.menuBarIconAttentionPip, isOn: Binding(
+                    get: { !menuBarIconHideAttentionPip },
+                    set: { menuBarIconHideAttentionPip = !$0 }
+                ))
             } footer: {
                 Text(HeadroomCopy.menuBarIconHint)
             }

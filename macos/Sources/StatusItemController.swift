@@ -80,7 +80,8 @@ final class StatusItemController: NSObject {
 
     private func update(snapshot: UsageSnapshot, healthy: Bool) {
         let attention = snapshot.attention
-        let showPip = attention?.isWarning == true
+        let warning = attention?.isWarning == true
+        let showPip = warning && MenuBarIconStyle.showsAttentionPip
         let style = MenuBarIconStyle.current
         let invert = MenuBarIconStyle.invert
         statusItem.button?.image = MeterIconRenderer.render(
@@ -95,7 +96,7 @@ final class StatusItemController: NSObject {
             // "unavailable" was doing four different jobs. Settings already
             // calls this thing the host.
             statusItem.button?.toolTip = "\(HeadroomCopy.product) — host not answering"
-        } else if showPip, let attention {
+        } else if warning, let attention {
             statusItem.button?.toolTip =
                 "\(HeadroomCopy.product) — \(attention.summary ?? HeadroomCopy.needsAttention)"
         } else {

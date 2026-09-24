@@ -10,6 +10,10 @@ enum MenuBarIconStyle: String, CaseIterable, Sendable {
     /// Flips Remaining (left ↔ used) and Pace (over ↔ under) without
     /// changing which of the two styles is active.
     static let invertDefaultsKey = "menuBarIconInvert"
+    /// Off keeps the glyph a pure template — no coloured attention pip, so
+    /// the menu bar stays monochrome. Stored inverted so a missing key reads
+    /// as the shipped default (pip on).
+    static let hideAttentionPipDefaultsKey = "menuBarIconHideAttentionPip"
 
     /// Softness of the pace curve. A delta of this many points maps near
     /// halfway to the edge (`tanh(1) ≈ 0.76`); small gaps stay readable and
@@ -24,6 +28,10 @@ enum MenuBarIconStyle: String, CaseIterable, Sendable {
 
     static var invert: Bool {
         UserDefaults.standard.bool(forKey: invertDefaultsKey)
+    }
+
+    static var showsAttentionPip: Bool {
+        !UserDefaults.standard.bool(forKey: hideAttentionPipDefaultsKey)
     }
 
     /// Maps `used% − pace%` onto (−1, +1) for vertical placement.
