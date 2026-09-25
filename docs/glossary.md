@@ -69,7 +69,7 @@ returns only one time fact, so the two never meet.
 The macOS quota overview is the other deliberate exception: its ring caption
 puts the compact countdown and local clock together as
 **Reset: 5d1h, Sun 1pm.**, followed by signed slack on its own line:
-**11% to spare** or **4% over**.
+**11% to spare** or **4% over**, then remaining quota such as **5% left**.
 
 **Host prose times are 24-hour, English (U.S.), not localized.** The macOS
 quota overview is the deliberate exception: its compact ring captions use

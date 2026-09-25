@@ -36,7 +36,7 @@ enum QuotaOverviewSummary {
                     deltaPct: burndown.deltaPct
                 ),
                 remainingLine: headline.percent.map {
-                    HeadroomCopy.percentLeft(100 - $0)
+                    HeadroomCopy.percentLeft(min(100, max(0, 100 - $0)))
                 }
             )
         }
