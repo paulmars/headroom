@@ -142,8 +142,8 @@ final class ContractTests: XCTestCase {
     }
 
     /// Catches the overview falling back to detached provider sentences
-    /// instead of the two captions that belong under each provider's ring.
-    func testQuotaOverviewColumnsCarryEachProvidersResetAndPace() throws {
+    /// instead of the captions that belong under each provider's ring.
+    func testQuotaOverviewColumnsCarryResetPaceAndRemaining() throws {
         let json = """
         {
           "providers": [
@@ -154,7 +154,7 @@ final class ContractTests: XCTestCase {
              }},
             {"id": "codex", "title": "Codex", "enabled": true,
              "headline": "week", "pools": {
-               "week": {"title": "Weekly", "pct": 12, "window_s": 604800,
+               "week": {"title": "Weekly", "pct": 104, "window_s": 604800,
                         "resets_in": "5d 10h", "ring": true}
              }}
           ],
@@ -191,7 +191,7 @@ final class ContractTests: XCTestCase {
             },
             [
                 ["5d1h", "On Pace", "5% left"],
-                ["5d10h", "7% to spare", "88% left"],
+                ["5d10h", "7% to spare", "0% left"],
             ]
         )
     }
@@ -238,6 +238,9 @@ final class ContractTests: XCTestCase {
         XCTAssertEqual(
             QuotaOverviewSummary.columns(for: snapshot).first?.paceLine,
             "4% over"
+        )
+        XCTAssertNil(
+            QuotaOverviewSummary.columns(for: snapshot).first?.remainingLine
         )
     }
 
