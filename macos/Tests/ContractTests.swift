@@ -142,19 +142,19 @@ final class ContractTests: XCTestCase {
     }
 
     /// Catches the overview falling back to detached provider sentences
-    /// instead of the two captions that belong under each provider's ring.
-    func testQuotaOverviewColumnsCarryEachProvidersResetAndPace() throws {
+    /// instead of the captions that belong under each provider's ring.
+    func testQuotaOverviewColumnsCarryResetPaceAndRemaining() throws {
         let json = """
         {
           "providers": [
             {"id": "claude", "title": "Claude", "enabled": true,
              "headline": "week", "pools": {
-               "week": {"title": "Weekly", "pct": 10, "window_s": 604800,
+               "week": {"title": "Weekly", "pct": 95, "window_s": 604800,
                         "resets_in": "5d 1h", "ring": true}
              }},
             {"id": "codex", "title": "Codex", "enabled": true,
              "headline": "week", "pools": {
-               "week": {"title": "Weekly", "pct": 12, "window_s": 604800,
+               "week": {"title": "Weekly", "pct": 104, "window_s": 604800,
                         "resets_in": "5d 10h", "ring": true}
              }}
           ],
@@ -162,7 +162,7 @@ final class ContractTests: XCTestCase {
             "claude": {"week": {
               "provider": "claude", "pool": "week", "status": "ok",
               "window_end": 1788094800, "window_s": 604800,
-              "delta_pct": 11
+              "delta_pct": 0.4
             }},
             "codex": {"week": {
               "provider": "codex", "pool": "week", "status": "ok",
@@ -186,10 +186,12 @@ final class ContractTests: XCTestCase {
         )
         XCTAssertEqual(columns.map(\.providerID), ["claude", "codex"])
         XCTAssertEqual(
-            columns.map { [$0.resetLine ?? "", $0.paceLine] },
+            columns.map {
+                [$0.resetLine ?? "", $0.paceLine, $0.remainingLine ?? ""]
+            },
             [
-                ["5d1h", "11% to spare"],
-                ["5d10h", "7% to spare"],
+                ["5d1h", "On Pace", "5% left"],
+                ["5d10h", "7% to spare", "0% left"],
             ]
         )
     }
@@ -236,6 +238,9 @@ final class ContractTests: XCTestCase {
         XCTAssertEqual(
             QuotaOverviewSummary.columns(for: snapshot).first?.paceLine,
             "4% over"
+        )
+        XCTAssertNil(
+            QuotaOverviewSummary.columns(for: snapshot).first?.remainingLine
         )
     }
 
