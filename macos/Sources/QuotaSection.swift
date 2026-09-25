@@ -8,6 +8,7 @@ enum QuotaOverviewSummary {
         let providerID: String
         let resetLine: String?
         let paceLine: String
+        let remainingLine: String?
 
         var id: String { providerID }
     }
@@ -21,10 +22,11 @@ enum QuotaOverviewSummary {
             guard let burndown = snapshot.overviewBurndown(
                 forProviderID: provider.id
             ) else { return nil }
+            let headline = snapshot.meter(for: provider).headline
             return Column(
                 providerID: provider.id,
                 resetLine: HeadroomCopy.quotaOverviewReset(
-                    duration: snapshot.meter(for: provider).headline.reset,
+                    duration: headline.reset,
                     resetEpoch: burndown.windowEnd,
                     timeZone: timeZone,
                     now: now
@@ -32,7 +34,10 @@ enum QuotaOverviewSummary {
                 paceLine: HeadroomCopy.quotaOverviewSlack(
                     overPace: burndown.kind != .ok,
                     deltaPct: burndown.deltaPct
-                )
+                ),
+                remainingLine: headline.percent.map {
+                    HeadroomCopy.percentLeft(100 - $0)
+                }
             )
         }
     }
@@ -404,6 +409,13 @@ struct ProviderQuotaRing: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
+                    if let remainingLine = overview.remainingLine {
+                        Text(remainingLine)
+                            .font(.caption2.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
                 } else if provider.statusNote == nil {
                     Text(windowCaption)
                         .font(.caption2)
