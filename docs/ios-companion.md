@@ -74,9 +74,10 @@ Mac on its own — the phone forwards what it fetched. See
     App Intents strings are literals in that file on purpose — the metadata
     extractor reads them out of the source at build time, so a `HeadroomCopy`
     constant would reach the picker as nothing.
-    - **One intermediate cohort cannot migrate in place.** Versions 2.0.6–2.1.0
-      briefly shipped the editable configuration under the original static
-      kind. A widget added in that window may freeze again when the static
+    - **One intermediate cohort cannot migrate in place.** Upstream versions
+      2.0.6–2.1.7 use the editable configuration under the original static
+      kind; the fork introduced separate kinds earlier. A widget added under
+      the upstream editable definition may freeze when the static
       definition is restored; remove it and add **Headroom — Provider** to
       retain provider selection. There is no WidgetKit representation that
       preserves both configuration systems under the same kind.

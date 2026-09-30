@@ -58,7 +58,7 @@ is stated as a noun.
 | Form | Looks like | Where | Field |
 |---|---|---|---|
 | Clock | `Thu 14:00`, `tomorrow 04:18` | `headline`, anywhere with a full line | `_when()` |
-| Quota overview reset | `Reset: 5d1h, Sun 1pm.` | Per-provider caption under the macOS rings | `resets_in` + `window_end` |
+| Quota overview reset | `5d1h`, or `1pm` when today | Per-provider caption under the macOS rings | `resets_in` or `window_end` |
 | Duration | `4d 44m`, `3d` | menu bar, watch, board, `Resets 3d` captions | `resets_in`, `fmt_resets()` |
 
 One sentence usually gets one form. `58% left · 4d 44m. Out tomorrow 04:18` was two
@@ -66,15 +66,17 @@ time facts in two shapes on one line. The board's `verdict` is the documented
 exception — at ~25 bytes it takes duration form, and each of its branches
 returns only one time fact, so the two never meet.
 
-The macOS quota overview is the other deliberate exception: its ring caption
-puts the compact countdown and local clock together as
-**Reset: 5d1h, Sun 1pm.**, followed by signed slack on its own line:
-**11% to spare** or **4% over**, then remaining quota such as **5% left**.
+The macOS quota overview uses a compact countdown such as **5d1h**, or only
+the local clock (**1pm**) when the reset is today. If no duration is available,
+it falls back to a weekday and clock (**Sun 1pm**). Signed slack follows on its
+own line: **11% to spare** or **4% over**, then remaining quota such as
+**5% left**. Without a delta of at least one point, slack reads **On Pace** or
+**Over Pace**. There is no **Reset:** prefix.
 
 **Host prose times are 24-hour, English (U.S.), not localized.** The macOS
 quota overview is the deliberate exception: its compact ring captions use
 an unpadded 12-hour clock with lowercase `am` / `pm`, as in
-`Reset: 5d1h, Sun 1pm.`.
+`1pm`. Widgets use the same compact clock form.
 Every string is a literal; there is no `.strings` catalogue and
 `host/burndown.py` formats with `%H:%M`. The host form was decided by default
 rather than on purpose — record it here so the day
@@ -456,19 +458,23 @@ Say **top 3** in user-facing copy, not "focus" — that word is API vocabulary.
 
 ### Widgets
 
-The Mac medium widget gives each provider one line with identity, remaining
-quota and pace: **Claude: 89% left, 33% spare**. Use **N% over** when the signed
-pace slack is negative. The pace slot is always present; a cache written before
-that reading existed shows **— spare** rather than dropping the words. It never
-adds a separate **N% used** line.
+The Mac medium widget gives each provider one line with identity and pace:
+**Claude: 33% spare**. Use **N% over** when the signed pace slack is negative.
+The pace slot is always present; a cache written before that reading existed
+shows **— spare** rather than dropping the words. It adds neither a separate
+**N% used** line nor remaining percentage to this summary.
 
-The small widget gives Claude one reset row: **5h: 1h34m**. Codex gets no reset
-rows on Mac; its rings and percent are enough for that surface. Weekly reset
-rows show only the compact time left (**3d1h**) or, when the reset is today,
-the local time (**2pm**); they have no **1w:** prefix. Widget durations remove
-internal spaces to fit the tile, and a missing Claude reading stays visible as
-**5h: —**. The iPhone widget keeps the shared two-row reset and three-row
-medium presentations.
+The Mac small widget gives every provider two reset rows, weekly first:
+**1w: 3d1h**, then **5h: 1h34m**. This includes Codex. A weekly reset today
+uses the local clock (**1w: 2pm**). Missing readings stay visible as
+**1w: —** and **5h: —**. It does not print a used percentage.
+
+The iPhone small widget retains the used percentage and shows the session
+reset followed by an unprefixed weekly reset; Codex omits the session row.
+The iPhone medium chart legend shows name, remaining quota and pace on
+separate rows (**Claude**, **89% left**, **33% to spare**). Without a chart,
+its ring fallback shows used percentage instead of remaining. Widget
+durations remove internal spaces to fit the tile.
 
 ### Menu bar icon
 
@@ -481,7 +487,7 @@ toggle that flips whichever style is active.
 | **Remaining** | Fuel | Fill height = quota left (today’s tanks) |
 | **Pace** | Pace | Dot above/below even-spend midline; `tanh((used − pace) / 8)` so small gaps move more than big ones |
 | **Invert** | — | Remaining fills by used instead of left; Pace flips over/under |
-| **Attention dot** | — | On (default): coloured pip when Attention warns. Off: the icon stays a monochrome template; the tooltip still says what needs attention |
+| **Attention dot** | — | On (default): coloured pip when Attention warns. Off: hides the pip; the tooltip still says what needs attention. The 2.1.7 dark plate remains |
 
 Do not name the Pace option after the game metaphor in chrome — **Pace** is
 the glossary word; the midline-and-dot shape is just how it draws.
