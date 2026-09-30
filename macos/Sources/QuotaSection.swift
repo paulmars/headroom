@@ -133,6 +133,9 @@ struct QuotaOverviewCard: View {
 struct ProviderQuotaCard: View {
     let meter: ProviderMeter
     let subscriptionPricing: SubscriptionPricing?
+    /// Claude's public service health rides on the Claude quota card rather
+    /// than appearing as a second provider.
+    var claudeStatus: ClaudeStatus? = nil
     /// Headline-meter points burned today for this provider (`by_day`).
     var todayBurn: Double? = nil
     var tint: Color? = nil
@@ -161,6 +164,9 @@ struct ProviderQuotaCard: View {
                             .monospacedDigit()
                     }
                 }
+            }
+            if meter.id == "claude", let claudeStatus {
+                ClaudeStatusLine(status: claudeStatus)
             }
             ForEach(
                 Array(meter.displayableWindows.enumerated()), id: \.offset
@@ -245,6 +251,15 @@ struct ProviderQuotaCard: View {
                         meter.statusAlarming
                             ? HeadroomPalette.orange : Color.secondary)
                     .lineLimit(2)
+            }
+            // The host's one-line remedy. Secondary even for a dead login:
+            // the status note above already carries the alarm colour.
+            if let fix = meter.fix {
+                Label(fix, systemImage: "wrench.and.screwdriver")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+                    .textSelection(.enabled)
             }
         }
         .cardStyle()

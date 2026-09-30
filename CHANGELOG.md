@@ -7,6 +7,119 @@ are not tracked here because they move on every commit.
 Add a section here before cutting a tag. `scripts/cut-release.sh` refuses to
 tag a version that has no entry.
 
+## 2.1.7 — 2026-09-27
+
+### Fixed
+
+- **Headroom no longer asks for your keychain password over and over after
+  a Claude login dies.** It used to re-read the Claude Code Keychain item on
+  every retry, and each read prompts unless you chose Always Allow. It now
+  checks the item's modification date first and reads it again only after
+  `claude /login` rewrites it. A refresh token the server rejected is never
+  sent again, and more than 4 refreshes in 30 minutes stops refreshing until
+  you press Refresh.
+
+### Added
+
+- **Failing sources say what to do.** Every provider that stops updating now
+  shows one line of fix guidance under its error in the Mac popover and the
+  iPhone detail card (`fix` in `/usage`). `headroom.log` records when each
+  source starts failing, why, and when it recovers.
+- **Also in this release:** the menu bar icon draws its live tanks on a shared
+  16 pt dark plate, and the host tests run the same in CI as on a Mac.
+
+## 2.1.6 — 2026-09-10
+
+### Fixed
+
+- **The iPhone companion now builds with Claude Status enabled.** Keep the
+  provider-detail arguments in declaration order so the companion can ship to
+  TestFlight with the macOS release.
+
+## 2.1.5 — 2026-09-10
+
+### Changed
+
+- **Claude Status now lives on the Claude provider.** When enabled, its health
+  appears on Claude's row while the underlying check continues to monitor
+  incidents and feed Attention. It is no longer a standalone service users
+  have to add, configure, or reorder.
+
+## 2.1.4 — 2026-09-05
+
+### Changed
+
+- **Desk display dims on a schedule you set, and fades instead of stepping.**
+  Dim at night becomes Dim on a schedule with From and Until hour pickers in
+  the host's time zone. The host fades the brightness it serves to 10% over
+  thirty minutes after the start hour and back after the end hour, so a board
+  polling once a minute sees about thirty small steps rather than one jump.
+  The pane shows the level the panel holds right now while a fade or the dim
+  level is in effect. No reflash needed; the board applies what arrives.
+- **Desk display pages follow the sources.** Each page row takes its source's
+  title from the host, and a source that is off under Integrations shows as
+  off here and cannot be switched on from the pane, so a toggle never names
+  a page the board cannot draw.
+
+### Added
+
+- **The Desk display pane shows whether the board is still polling.** The host
+  measures the median gap between the board's polls and reports it beside
+  Last seen ("12 sec. ago · every 60 s"), with a dot that is green within two
+  and a half polls, orange within six, and red after that. The section
+  refreshes itself every fifteen seconds while open.
+
+## 2.1.3 — 2026-09-05
+
+### Added
+
+- **Settings → Desk display.** The ESP32 board's panel settings now live on
+  the Mac, beside iPhone and Other Macs. Brightness in four steps (25, 50, 75,
+  100%), Dim at night (10% from 22:00 to 07:00 in the host's time zone),
+  Celebrate quota resets, Boot animation, and which of the Vercel, Git and
+  Local servers pages the BOOT button cycles through. The pane also shows the
+  firmware stamp the board reports, how it is connected, and when it last
+  polled. The host stores the answers in `~/.headroom/config.json`, ships them
+  to the board as an additive `display` block in the device view, and the board
+  applies them on its next poll and keeps them in NVS, so a cold boot without
+  the host comes up the same way. A host older than this leaves the pane
+  read-only; a board flashed before this ignores the block. `PANEL_BRIGHTNESS`
+  in the firmware config is now only the first-boot level. Rings/Pace and the
+  lower pane stay on-board gestures. Needs a reflash to take effect on the
+  board.
+
+## 2.1.2 — 2026-09-03
+
+### Added
+
+- **Settings shows the menu bar glyph before you pick it.** General draws a
+  Preview strip above the icon picker, using the same renderer the status item
+  uses at the same size, on a dimmed strip with a wifi glyph, a battery and a
+  clock. Switching between Remaining and Pace, or flipping Invert, changes the
+  mark in front of you instead of sending you up to the menu bar and back. It
+  draws your own top three. With no coding provider on it falls back to sample
+  numbers and says so: the glyph is real, the numbers in it are not.
+
+## 2.1.1 — 2026-09-03
+
+### Fixed
+
+- **GitHub review requests and assignments stopped ageing out of Attention.**
+  An open issue keeps the status word `assigned` for as long as it is open, so
+  a request nobody answered a year ago sat in the queue with the same weight as
+  one from this morning. Dismissing it lasted until the next launch, because
+  dismissal is per-run memory and the row came straight back out of the search.
+  Inbox rows now leave Attention after 14 days untouched, the same way a failed
+  Actions run leaves after 24 hours. They keep their word and stay in the
+  Activity feed, so nothing disappears. They stop lighting the pip.
+
+### Changed
+
+- The host now says per row whether it belongs on Attention
+  (`activity[].needs_attention`), rather than every client working it out from
+  the status word. Older hosts do not send the key and behave exactly as
+  before. See [`docs/contract.md`](docs/contract.md).
+
 ## 2.1.0 — 2026-08-26
 
 ### Changed

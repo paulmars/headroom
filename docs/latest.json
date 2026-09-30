@@ -1,10 +1,10 @@
 {
   "schema": 1,
-  "version": "2.1.0",
-  "published": "2026-08-26T18:52:35Z",
-  "url": "https://github.com/michellzappa/headroom/releases/download/v2.1.0/Headroom-macOS.zip",
-  "sha256": "8a54b7570522734bbda66e4407331e048947c511f188836bafed43ac6eff37fe",
-  "size": 6214640,
+  "version": "2.1.6",
+  "published": "2026-09-10T19:38:41Z",
+  "url": "https://github.com/michellzappa/headroom/releases/download/v2.1.6/Headroom-macOS.zip",
+  "sha256": "9ebed7a9d75ac4af3c8606787b670e11ba345d00b7ada296d68a317f1fdea6ee",
+  "size": 6503979,
   "min_macos": "14.0",
-  "notes_md": "### Changed\n\n- **The desk board no longer dims at night.** It followed local solar times\n  and a fixed 22:00 bedtime, and stepped the panel to 30% after sunset and\n  10% after bedtime. It now holds one level all day and all night.\n  `PANEL_BRIGHTNESS` in `firmware/src/config.h` sets that level and replaces\n  the `BRIGHTNESS_*` set. An existing `config.h` keeps building.\n- Agent docs record the rotated-grant trap behind the 2.0.9 fix."
+  "notes_md": "### Fixed\n\n- **The iPhone companion now builds with Claude Status enabled.** Keep the\n  provider-detail arguments in declaration order so the companion can ship to\n  TestFlight with the macOS release."
 }

@@ -130,9 +130,22 @@ grants only — a provider handing back a week it had already taken. A Claude
 session simply rolling on schedule is not in there, so it had no cut to square
 against and came out as a diagonal between whatever two samples survived
 thinning: a two-hour ramp where the chart should read as a step.
-`boundaries` names every one of them, grants included, and `resets` stays
-exactly what it was. Clients read it through `historyRisers`, which falls back
-to `resets` for a host that predates the key.
+`boundaries` names every one of them, grants included, and also records a
+provider refill that leaves the scheduled window unchanged (Claude can do
+this after a token reset); `resets` stays exactly what it was. Clients read it
+through `historyRisers`, which falls back to `resets` for a host that predates
+the key.
+
+`activity[].needs_attention` is a third shape: a key that exists to overrule
+a client-side derivation. Every surface used to decide the Attention queue
+from `status` alone, which works while one word can carry the answer. It
+cannot for the GitHub inbox — an assignment a year old is still `assigned`,
+still belongs in the feed, and stopped being attention months ago. The host
+now states the verdict and the clients read
+`hostNeedsAttention ?? ActivityStatusStyle.resolve(status).needsAttention`,
+so a host that predates the key keeps the old behaviour. Absent means "ask
+status", not `false` — which is why the field is optional in Swift and
+defaulted at the use site rather than at the decoder.
 
 The board is the exception the deprecation window above describes. Its `gpts`
 key had one writer and zero readers, so it was replaced outright by `hist` /
@@ -236,9 +249,19 @@ Two rules keep it a projection rather than a fork:
   identically. A null that survives into the device view is a field the board
   will silently read as zero.
 
-The one non-usage field is the additive `device_effect` command envelope. It
-is host control state for the board's next poll, not a second source of usage
-data; older firmware ignores it and flashed firmware consumes each id once.
+The two non-usage fields are additive host control state for the board's next
+poll, not a second source of usage data. `device_effect` is a command envelope:
+older firmware ignores it and flashed firmware consumes each id once. `display`
+is the panel settings Mac Settings → Desk display holds — brightness in panel
+units, whether resets are celebrated, whether the boot animation plays, and
+which source pages BOOT cycles through. The values are *effective*: scheduled
+dimming is decided on the host, and so is the thirty-minute fade into and out
+of it, so a dimmed or mid-fade brightness arrives as a number and the board
+never learns why. Firmware that predates the block never asks
+for the key; firmware that has it mirrors the block to NVS and keeps the last
+answer when a host stops sending one. Rings/Pace and the lower pane are not in
+it on purpose — they are board-side gestures, and a setting with two owners
+snaps back sixty seconds after you change it.
 
 The board also never picks anything. The host chooses which three providers are
 in `focus`, in pinned order, enabled only — so the desk, the menu bar and the

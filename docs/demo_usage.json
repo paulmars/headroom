@@ -756,6 +756,7 @@
         "author": "alice",
         "url": "https://github.com/acme/web/pull/42",
         "is_pr": true,
+        "needs_attention": true,
         "ago": "12m"
       }
     ],
@@ -1244,7 +1245,7 @@
       "id": "claude-status",
       "title": "Claude Status",
       "kind": "activity",
-      "group": "ai",
+      "group": "devtools",
       "enabled": true,
       "ok": true,
       "configured": true,

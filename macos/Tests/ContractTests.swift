@@ -406,14 +406,27 @@ final class ContractTests: XCTestCase {
         XCTAssertEqual(grouped.map(\.group), [.ai, .devtools])
         XCTAssertEqual(
             grouped.first { $0.group == .ai }?.sources.map(\.id),
-            ["claude", "codex", "cursor", "openrouter", "ai-gateway", "claude-status"])
+            ["claude", "codex", "cursor", "openrouter", "ai-gateway"])
         let ai = try XCTUnwrap(grouped.first { $0.group == .ai })
-        XCTAssertEqual(
-            ai.sources.first { $0.id == "claude-status" }?.kind, "activity")
         let devtools = try XCTUnwrap(grouped.first { $0.group == .devtools })
         XCTAssertTrue(devtools.sources.contains { $0.id == "plausible" })
         XCTAssertTrue(devtools.sources.contains { $0.id == "posthog" })
         XCTAssertFalse(devtools.sources.contains { $0.kind == "quota" })
+        XCTAssertEqual(
+            devtools.sources.first { $0.id == "claude-status" }?.kind,
+            "activity")
+    }
+
+    func testClaudeStatusAttachesOnlyWhenItsCheckIsEnabled() throws {
+        var snapshot = try decodeDemo()
+        XCTAssertNotNil(snapshot.claudeStatusIfEnabled)
+
+        var sources = try XCTUnwrap(snapshot.sources)
+        let index = try XCTUnwrap(
+            sources.firstIndex { $0.id == "claude-status" })
+        sources[index].enabled = false
+        snapshot.sources = sources
+        XCTAssertNil(snapshot.claudeStatusIfEnabled)
     }
 
     func testSourceGroupFallsBackToKindOnOlderHosts() {
@@ -611,6 +624,34 @@ final class ContractTests: XCTestCase {
         XCTAssertEqual(
             row.caption(label: style.label),
             "\(HeadroomCopy.activityReviewRequest) · web · @alice · #42")
+        // No verdict on the wire: status decides, same as every older host.
+        XCTAssertTrue(row.needsAttention)
+    }
+
+    func testAnAgedInboxRowKeepsItsWordAndLeavesAttention() throws {
+        // A year-old assignment is still `assigned` — the word is right and
+        // the row belongs in the feed. Only the host knows it stopped being
+        // attention, so it says so per row.
+        let row = try JSONDecoder().decode(
+            ActivityItem.self,
+            from: Data("""
+                {
+                  "id":"github-inbox:100",
+                  "kind":"github",
+                  "status":"assigned",
+                  "subject":"Limit headline to 200 chars",
+                  "repo":"acme/core",
+                  "needs_attention":false,
+                  "ago":"371d"
+                }
+                """.utf8
+            )
+        )
+        XCTAssertFalse(row.needsAttention)
+        XCTAssertTrue(ActivityStatusStyle.resolve(row.status).needsAttention)
+        XCTAssertEqual(
+            row.caption(label: ActivityStatusStyle.resolve(row.status).label),
+            "\(HeadroomCopy.activityAssigned) · core")
     }
 
     func testARateLimitedProviderSaysPausedNotNotUpdating() throws {
@@ -938,16 +979,12 @@ final class WidgetSnapshotSkewTests: XCTestCase {
         }
 
         let bundle = try section(
-            from: "struct HeadroomWidgetBundle",
-            to: "private enum HeadroomWidgetGallery"
-        )
+            from: "struct HeadroomWidgetBundle", to: "private enum HeadroomWidgetGallery")
         XCTAssertTrue(bundle.contains("HeadroomLegacyStatusWidget()"))
         XCTAssertTrue(bundle.contains("HeadroomStatusWidget()"))
 
         let legacy = compact(try section(
-            from: "struct HeadroomLegacyStatusWidget",
-            to: "struct HeadroomStatusWidget"
-        ))
+            from: "struct HeadroomLegacyStatusWidget", to: "struct HeadroomStatusWidget"))
         XCTAssertTrue(legacy.contains(
             "StaticConfiguration(kind:HeadroomWidgetIdentity.legacyKind,"
                 + "provider:HeadroomLegacyWidgetProvider()"

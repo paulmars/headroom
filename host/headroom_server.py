@@ -128,6 +128,9 @@ _dedupers = {}
 _buckets = {}
 _state = sources_config.blank_state()          # source id -> latest payload
 _source_times = {sid: 0.0 for sid in sources_config.SOURCE_IDS}
+# Source id -> {"since", "polls", "error"} while a source is failing. Only
+# `_refresh_one` touches it, and only to decide which log lines to write.
+_failing = {}
 
 # Pre-rendered response bodies, rebuilt at the end of each poll tick.
 _cache_lock = threading.Lock()
@@ -297,6 +300,9 @@ def _build_activity(vercel, git, supabase=None, github=None,
             "id": f"github-inbox:{item.get('id')}",
             "kind": "github",
             "status": reason,
+            # Aged rows keep their status word in the feed and stop counting
+            # as Attention — the status vocabulary alone cannot say that.
+            "needs_attention": item.get("needs_attention", True),
             "subject": item.get("title") or "GitHub",
             "repo": item.get("repo"),
             "project": None,
@@ -1088,7 +1094,8 @@ def publish():
     doc = _compute_doc()
     usage = json.dumps(doc).encode()
     device = json.dumps(
-        device_view.build(doc, effect=_device_effect_payload()),
+        device_view.build(doc, effect=_device_effect_payload(),
+                          display=app_config.display_projection()),
         separators=(",", ":")).encode()
     with _cache_lock:
         _cache.update(doc=doc, usage=usage, device=device, built=time.time())
@@ -1143,6 +1150,43 @@ def _provider_stale_cause(provider):
     return cache_util.stale_kind(provider.get("error"))
 
 
+# What to do about a failure, by cause. A fetcher that knows better sets
+# `fix` on its payload and wins; these cover the rest. The per-poll log line
+# says what broke, and these say whose move it is — most causes are the
+# host's to wait out, and saying so stops people hammering Refresh.
+_FIX_BY_CAUSE = {
+    "rate_limited": ("The provider asked Headroom to slow down. Headroom "
+                     "retries on its own. You do not need to do anything."),
+    "network": ("Headroom cannot reach the provider. Check this Mac's "
+                "internet connection or VPN. Headroom retries on its own."),
+    "provider": ("The provider's service is returning errors. Headroom "
+                 "retries on its own. If it lasts, check the provider's "
+                 "status page."),
+}
+FIX_FALLBACK = ("If this lasts, the full error is in "
+                "~/.headroom/logs/headroom.log.")
+
+
+def _fix_for(source_id, payload):
+    """One sentence on how to get this source's data flowing again.
+
+    None while the source is healthy. Every surface draws it under the error,
+    so it names an action, not a restatement of the error.
+    """
+    payload = payload or {}
+    if not payload.get("error"):
+        return None
+    if payload.get("ok") and not payload.get("stale"):
+        return None
+    if payload.get("fix"):
+        return payload["fix"]
+    if payload.get("auth_required"):
+        remedy = sources_config.login_remedy(source_id)
+        return f"{remedy[:1].upper()}{remedy[1:]}, then refresh Headroom."
+    return _FIX_BY_CAUSE.get(
+        _provider_stale_cause(payload), FIX_FALLBACK)
+
+
 def _retry_in_s(payload, now=None):
     """Seconds until a rate-limit hold lifts, or None when none is active."""
     retry_at = (payload or {}).get("retry_at")
@@ -1180,8 +1224,10 @@ def _build_attention(doc):
 
     # Incoming review requests / assignments on the watched list — warn, not
     # critical: they are yours to answer, but they are not a red CI.
-    inbox = github.get("inbox") or []
-    inbox_count = int(github.get("inbox_count") or len(inbox) or 0)
+    # Only rows inside ATTENTION_INBOX_MAX_AGE_S count here. An assignment
+    # nobody has touched in two weeks stays in the feed and stops paging.
+    inbox = github_actions.attention_inbox(github.get("inbox") or [])
+    inbox_count = len(inbox)
     if github.get("configured") and inbox_count > 0:
         summary = github_actions.attention_inbox_summary(inbox) or (
             f"{inbox_count} GitHub inbox"
@@ -1448,6 +1494,7 @@ def _sources_payload(state):
             "stale_cause": (
                 _provider_stale_cause(payload) if payload.get("stale")
                 else None),
+            "fix": _fix_for(source.id, payload),
         }
         # Named accounts only. Clients put this next to the brand mark so the
         # mark names the tool and the label names the login — "Claude · Work"
@@ -1566,6 +1613,8 @@ def _providers_payload(state, burndowns=None):
             "retry_in_s": _retry_in_s(payload),
             "plan": payload.get("plan"),
             "error": payload.get("error"),
+            # How to get the data flowing again. Null while healthy.
+            "fix": _fix_for(source.id, payload),
             "accent": sources_config.accent_for(source.id),
             "accent_default": source.accent,
             **({"accent_derived": sources_config.derived_accent_for(source.id)}
@@ -1597,7 +1646,12 @@ def _providers_payload(state, burndowns=None):
 # the question "is the ROM on my desk the build I flashed" should not have a
 # Wi-Fi answer and a cable answer.
 _device_lock = threading.Lock()
-_device = {"firmware": None, "seen": 0.0, "via": None}
+# `gaps` holds the last few intervals between polls; their median is the
+# board's cadence as observed, which is the only place it can be observed —
+# POLL_INTERVAL_S lives in the board's config.h and never travels. A forced
+# sync or a backoff retry lands one odd gap; the median shrugs it off.
+_device = {"firmware": None, "seen": 0.0, "via": None, "gaps": []}
+_DEVICE_GAP_SAMPLES = 5
 _device_effect_lock = threading.Lock()
 _device_effect = {"id": 0, "kind": None, "provider": None}
 
@@ -1615,21 +1669,34 @@ def _note_device(query, via):
         return
     if not firmware:
         return
+    now = time.time()
     with _device_lock:
         if _device["firmware"] != firmware:
             print(f"device firmware {firmware} (via {via})", flush=True)
-        _device.update(firmware=firmware[:64], seen=time.time(), via=via)
+        if _device["seen"] > 0:
+            gap = now - _device["seen"]
+            # Sub-second doubles (one poll, two transports) say nothing about
+            # cadence; anything longer is a real interval, odd or not.
+            if gap >= 1.0:
+                _device["gaps"] = (_device["gaps"] + [gap])[-_DEVICE_GAP_SAMPLES:]
+        _device.update(firmware=firmware[:64], seen=now, via=via)
 
 
 def _device_payload(now):
     with _device_lock:
         if not _device["firmware"]:
             return None
-        return {
+        payload = {
             "firmware": _device["firmware"],
             "via": _device["via"],
             "age_s": int(max(0, now - _device["seen"])),
         }
+        gaps = sorted(_device["gaps"])
+        if gaps:
+            # Median of the observed intervals, so one forced sync or one
+            # backoff retry does not move it. Absent until a second poll.
+            payload["poll_s"] = int(round(gaps[len(gaps) // 2]))
+        return payload
 
 
 def _device_effect_payload():
@@ -1730,6 +1797,14 @@ def _timezone_config_payload():
         "ok": True,
         "timezone": app_config.timezone_name(),
     }
+
+
+def _display_config_payload():
+    """Settings → Desk display: the knobs plus what the board last reported."""
+    payload = {"ok": True}
+    payload.update(app_config.display_settings())
+    payload["board"] = _device_payload(time.time())
+    return payload
 
 
 def _posthog_config_payload():
@@ -1961,7 +2036,7 @@ class Handler(BaseHTTPRequestHandler):
                         "/config/git", "/config/vercel", "/config/supabase",
                         "/config/plausible", "/config/posthog",
                         "/config/sentry", "/config/datadog", "/config/axiom",
-                        "/config/timezone",
+                        "/config/timezone", "/config/display",
                         "/agents/capabilities", "/agents/config",
                         "/agents/claude/config", "/agents/codex/task",
                         "/agents/tasks",
@@ -1982,7 +2057,7 @@ class Handler(BaseHTTPRequestHandler):
         if path in ("/config/git", "/config/vercel", "/config/supabase",
                     "/config/plausible", "/config/posthog",
                     "/config/sentry", "/config/datadog", "/config/axiom",
-                    "/config/timezone"):
+                    "/config/timezone", "/config/display"):
             # Names folders on this disk and the teams / projects / sites a
             # login can reach — Mac-local, same class as /github/watch.
             if not self._is_loopback():
@@ -2004,6 +2079,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_json(200, _datadog_config_payload())
             elif path == "/config/timezone":
                 self._send_json(200, _timezone_config_payload())
+            elif path == "/config/display":
+                self._send_json(200, _display_config_payload())
             else:
                 self._send_json(200, _axiom_config_payload())
             return
@@ -2016,9 +2093,12 @@ class Handler(BaseHTTPRequestHandler):
             self._send_json(200, _accounts_payload())
             return
         if path == "/agents/tasks":
-            if not self._is_loopback() and not self._mobile_permission_allowed(
-                    "agents"):
-                self._send_json(403, {"ok": False, "error": "not allowed"})
+            # Starting work runs a local executable and accepts arbitrary
+            # prompt text. It is a Mac-local convenience, not a mobile agent
+            # client capability; the phone only answers existing attention
+            # events below.
+            if not self._is_loopback():
+                self._send_json(403, {"ok": False, "error": "localhost only"})
                 return
             self._send_json(200, agent_gateway.get().task_surface())
             return
@@ -2151,6 +2231,7 @@ class Handler(BaseHTTPRequestHandler):
             "/config/datadog",
             "/config/axiom",
             "/config/timezone",
+            "/config/display",
             "/accounts",
             "/agents/config",
             "/agents/claude/config",
@@ -2217,12 +2298,11 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_json(403, {"ok": False, "error": "localhost only"})
                 return
         elif path == "/agents/tasks":
-            # Starting work runs a local executable with your words, so it
-            # rides the same Mac-granted permission that lets a phone answer
-            # an approval — off by default, and never open to the LAN at large.
-            if not self._is_loopback() and not self._mobile_permission_allowed(
-                    "agents"):
-                self._send_json(403, {"ok": False, "error": "not allowed"})
+            # Starting work runs a local executable and accepts arbitrary
+            # prompt text. Keep it on the Mac; mobile is an attention surface,
+            # not an agent client.
+            if not self._is_loopback():
+                self._send_json(403, {"ok": False, "error": "localhost only"})
                 return
         elif path in ("/agents/claude/config", "/agents/codex/tasks",
                       "/agents/codex/steer"):
@@ -2529,6 +2609,26 @@ class Handler(BaseHTTPRequestHandler):
             # document is answering the old question until it is rebuilt.
             publish()
             self._send_json(200, _timezone_config_payload())
+            return
+
+        if path == "/config/display":
+            try:
+                app_config.set_display(
+                    brightness_pct=payload.get("brightness_pct"),
+                    dim_at_night=payload.get("dim_at_night"),
+                    dim_start_hour=payload.get("dim_start_hour"),
+                    dim_end_hour=payload.get("dim_end_hour"),
+                    celebrate_resets=payload.get("celebrate_resets"),
+                    boot_splash=payload.get("boot_splash"),
+                    pages=payload.get("pages"),
+                )
+            except ValueError as error:
+                self._send_json(400, {"ok": False, "error": str(error)})
+                return
+            # The board reads the cached device projection, so rebuild it now
+            # rather than on the next refresh tick.
+            publish()
+            self._send_json(200, _display_config_payload())
             return
 
         if path == "/config/posthog":
@@ -2843,6 +2943,7 @@ def _refresh_one(source_id, force=False):
     with _lock:
         _state[source_id] = payload
         _source_times[source_id] = time.time()
+    _log_failure_transition(source_id, payload)
     if payload.get("ok"):
         # A stale replay still reads `ok`, so logging only the numbers hides
         # why they stopped moving. That is not cosmetic: a rate limit never
@@ -2852,6 +2953,38 @@ def _refresh_one(source_id, force=False):
         print(f"{source_id:9s} ok  {source.summary(payload)}{note}")
     else:
         print(f"{source_id:9s} miss:", payload.get("error"))
+
+
+def _log_failure_transition(source_id, payload, now=None):
+    """Write one line when a source starts failing, changes why, or recovers.
+
+    The per-poll lines below repeat the error every minute, which buries the
+    moment it started and never says what to do. These lines are the ones to
+    grep for: `grep -E "FAILING|recovered" ~/.headroom/logs/headroom.log`.
+    """
+    now = time.time() if now is None else now
+    error = payload.get("error")
+    failing = bool(error) and (payload.get("stale") or not payload.get("ok"))
+    # A source nobody connected is not failing, it is waiting for a key.
+    if payload.get("configured") is False:
+        failing = False
+    prev = _failing.get(source_id)
+    if not failing:
+        if prev:
+            _failing.pop(source_id, None)
+            print(f"{source_id} recovered after {prev['polls']} failed "
+                  f"poll(s) over {oauth_usage.fmt_resets(now - prev['since'])}")
+        return
+    if prev is None:
+        prev = _failing[source_id] = {"since": now, "polls": 0, "error": None}
+    prev["polls"] += 1
+    if prev["error"] == error:
+        return
+    prev["error"] = error
+    kind = ("sign-in" if payload.get("auth_required")
+            else _provider_stale_cause(payload) or "error")
+    print(f"{source_id} FAILING ({kind}, poll {prev['polls']}): {error}")
+    print(f"{source_id} fix: {_fix_for(source_id, payload)}")
 
 
 def _observe_burn():
